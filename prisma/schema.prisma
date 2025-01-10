@@ -22,23 +22,32 @@ model Users {
   email String @unique
   phone String
   password String
-  events Events[]
-}
-
-model Events {
-  id Int @id@default(autoincrement())
-  event_type EventType
-  event_time DateTime @default(now())
-  gas_concentration Decimal
-  user_id Int 
-  user Users @relation(fields: [user_id], references: [id])
+  role Role[]
 }
 
 model Role {
   id Int @id@default(autoincrement())
   role_admin String
   role_user String
+  user_id Int 
+  user Users @relation(fields: [user_id], references: [id])
 }
+
+model Device {
+  id Int @id@default(autoincrement())
+  name_device String
+  status String
+  events Events[]
+}
+model Events {
+  id Int @id@default(autoincrement())
+  event_type EventType
+  event_time DateTime @default(now())
+  gas_concentration Decimal
+  device_id Int 
+  user Device @relation(fields: [device_id], references: [id])
+}
+
 
 enum EventType {
     FUGA_DETECTADA         
