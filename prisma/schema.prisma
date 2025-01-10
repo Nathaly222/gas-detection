@@ -4,15 +4,17 @@
  // ways to speed up your queries, or scale easily with your serverless or edge functions?
  // Accelerate: https:ly/cli/accelerate-init
 
+
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
+        
 
 model Users {
   id Int @id@default(autoincrement())
@@ -30,6 +32,12 @@ model Events {
   gas_concentration Decimal
   user_id Int 
   user Users @relation(fields: [user_id], references: [id])
+}
+
+model Role {
+  id Int @id@default(autoincrement())
+  role_admin String
+  role_user String
 }
 
 enum EventType {
