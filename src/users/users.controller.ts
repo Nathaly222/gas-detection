@@ -1,9 +1,14 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Req, BadRequestException } from '@nestjs/common';
+import { 
+  Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Req, BadRequestException 
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { AuthService } from '../auth/auth.service'; // Servicio de autenticación para login
+import { AuthService } from '../auth/auth.service'; 
+import { RoleProtected } from 'src/auth/dto/decorators/role-protected-decorator';
+import { ValidRoles } from '../auth/enums/valid-roles.enum';
+import { UserRoleGuard } from '../auth/guards/user-role.guard';
 
 @Controller('users')
 export class UsersController {
@@ -47,5 +52,13 @@ export class UsersController {
   @Delete('delete')
   async deleteAccount(@Req() req) {
     return this.usersService.remove(req.user.sub);
+  }
+
+  // Ruta protegida para administradores
+  @UseGuards(JwtAuthGuard, UserRoleGuard)
+  @RoleProtected(ValidRoles.ADMIN)
+  @Get('admin-only')
+  async adminOnly() {
+    return { message: 'This route is accessible only to admins' };
   }
 }

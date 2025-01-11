@@ -3,23 +3,47 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
+import { RoleType } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  // Crear un usuario
+  // Crear un usuario con un rol predeterminado (USER)
   async create(createUserDto: CreateUserDto) {
     const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
+   
     try {
-      const user = await this.prisma.users.create({
-        data: { ...createUserDto, password: hashedPassword },
+      // Primero, busca o crea el rol USER
+      const userRole = await this.prisma.role.findFirst({
+        where: { name: RoleType.USER }
+      }) || await this.prisma.role.create({
+        data: { name: RoleType.USER }
       });
+
+      // Luego, crea el usuario y conecta con el rol
+      const user = await this.prisma.users.create({
+        data: {
+          username: createUserDto.username,
+          email: createUserDto.email,
+          phone: createUserDto.phone,
+          password: hashedPassword,
+          roleId: userRole.id, // Asigna el roleId directamente
+          roles: {
+            connect: { id: userRole.id } // Conecta con el rol existente
+          }
+        },
+        include: {
+          roles: true // Incluye los roles en la respuesta
+        }
+      });
+      
       return { status: 'success', data: user };
     } catch (error) {
       throw new BadRequestException('Error creating user: ' + error.message);
     }
   }
+
 
   // Validar credenciales de usuario
   async validateUser(email: string, password: string) {
