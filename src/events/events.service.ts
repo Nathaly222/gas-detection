@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { CreateEventDto } from './dto/create-event.dto';import { UpdateEventDto } from './dto/update-event.dto';
+import { CreateEventDto } from './dto/create-event.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
@@ -12,7 +12,7 @@ export class EventsService {
         data: {
           event_type: createEventDto.eventType,
           gas_concentration: createEventDto.gasConcentration,
-          user: { connect: { id: createEventDto.userId } },
+          device: { connect: { id: createEventDto.device_id } }, // Cambiado de `user` a `device`
         },
       });
       return { status: 'success', data: event };
@@ -26,32 +26,48 @@ export class EventsService {
   }
 
   async findAll() {
-    const events = await  this.prisma.events.findMany({
-      include: { user: true},
-    })
-    return { status: 'success', data: events};
+    try {
+      const events = await this.prisma.events.findMany({
+        include: { device: true }, // Cambiado de `user` a `device`
+      });
+      return { status: 'success', data: events };
+    } catch (error) {
+      throw new NotFoundException({
+        status: 'error',
+        message: 'Failed to fetch events',
+        details: error.message,
+      });
+    }
   }
 
   async findOne(id: number) {
     const event = await this.prisma.events.findUnique({
       where: { id },
-      include: { user: true }, 
+      include: { device: true }, // Cambiado de `user` a `device`
     });
     if (!event) {
-      throw new NotFoundException({ status: 'fail', data: `Event with ID ${id} not found` });
+      throw new NotFoundException({
+        status: 'fail',
+        data: `Event with ID ${id} not found`,
+      });
     }
     return { status: 'success', data: event };
   }
-
 
   async remove(id: number) {
     try {
       await this.prisma.events.delete({
         where: { id },
       });
-      return { status: 'success', data: `Event with ID ${id} has been deleted` };
+      return {
+        status: 'success',
+        data: `Event with ID ${id} has been deleted`,
+      };
     } catch (error) {
-      throw new NotFoundException({ status: 'fail', data: `Event with ID ${id} not found` });
+      throw new NotFoundException({
+        status: 'fail',
+        data: `Event with ID ${id} not found`,
+      });
     }
   }
 }

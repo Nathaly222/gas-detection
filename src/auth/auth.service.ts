@@ -42,6 +42,15 @@ export class AuthService {
       throw new ConflictException('Email is already in use');
     }
 
+    // Busca el ID del rol predeterminado (USER)
+  const userRole = await this.prisma.role.findFirst({
+    where: { name: 'USER' },
+  });
+
+  if (!userRole) {
+    throw new Error('Default role USER not found in the database.');
+  }
+
     // Hashea la contraseña antes de guardarla
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -51,7 +60,8 @@ export class AuthService {
         username, 
         email, 
         password: hashedPassword, 
-        phone 
+        phone, 
+        roleId: userRole.id,
       },
     });
 
