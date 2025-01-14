@@ -21,7 +21,8 @@ export class AuthService {
     }
 
     // Genera el token JWT con la información del usuario
-    const token = this.jwtService.sign({ sub: user.id, email: user.email });
+    const payload = { sub: user.id, email: user.email };
+    const token = this.jwtService.sign(payload);
 
     // Excluye la contraseña del usuario en la respuesta
     const { password: _, ...userData } = user;
@@ -34,7 +35,17 @@ export class AuthService {
   }
 
   // Método para registrar un nuevo usuario
-  async register({ username, email, password, phone }: { username: string; email: string; password: string; phone: string }) {
+  async register({
+    username, 
+    email, 
+    password, 
+    phone,
+  }: { 
+    username: string; 
+    email: string; 
+    password: string; 
+    phone: string; 
+  }) {
     // Verifica si el email ya está registrado
     const existingUser = await this.prisma.users.findUnique({ where: { email } });
 
@@ -43,13 +54,13 @@ export class AuthService {
     }
 
     // Busca el ID del rol predeterminado (USER)
-  const userRole = await this.prisma.role.findFirst({
-    where: { name: 'USER' },
-  });
+    const userRole = await this.prisma.role.findFirst({
+      where: { name: 'USER' },
+    });
 
-  if (!userRole) {
-    throw new Error('Default role USER not found in the database.');
-  }
+    if (!userRole) {
+      throw new Error('Default role USER not found in the database.');
+    }
 
     // Hashea la contraseña antes de guardarla
     const hashedPassword = await bcrypt.hash(password, 10);

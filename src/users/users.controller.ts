@@ -16,7 +16,7 @@ export class UsersController {
     private readonly usersService: UsersService,
     private readonly authService: AuthService,
   ) {}
-
+/* 
   // Ruta para registrar un usuario
   @Post('register')
   async register(@Body() createUserDto: CreateUserDto) {
@@ -31,7 +31,8 @@ export class UsersController {
       throw new BadRequestException('Invalid email or password');
     }
     return this.authService.login(email, password); // Genera el token JWT
-  }
+  } 
+  */
 
   // Obtener el perfil del usuario autenticado
   @UseGuards(JwtAuthGuard)
