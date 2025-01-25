@@ -10,31 +10,38 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  // Método para iniciar sesión
+  private generateAccessToken(user: any): string {
+    const payload = { sub: user.id, email: user.email };
+    return this.jwtService.sign(payload, { expiresIn: '15m' });
+  }
+
+  private generateRefreshToken(user: any): string {
+    const secret = process.env.REFRESH_TOKEN_SECRET;
+    if (!secret) {
+      throw new Error('REFRESH_TOKEN_SECRET is not defined in environment variables');
+    }
+
+    const payload = { sub: user.id };
+    return this.jwtService.sign(payload, { expiresIn: '7d', secret });
+  }
+
   async login(email: string, password: string) {
-    // Busca el usuario por su email
     const user = await this.prisma.users.findUnique({ where: { email } });
 
-    // Verifica si el usuario existe y si la contraseña es válida
     if (!user || !(await bcrypt.compare(password, user.password))) {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    // Genera el token JWT con la información del usuario
-    const payload = { sub: user.id, email: user.email };
-    const token = this.jwtService.sign(payload);
+    const accessToken = this.generateAccessToken(user);
+    const refreshToken = this.generateRefreshToken(user);
 
-    // Excluye la contraseña del usuario en la respuesta
     const { password: _, ...userData } = user;
-
-    // Devuelve el token y los datos del usuario
     return { 
       status: 'success', 
-      data: { token, user: userData } 
+      data: { accessToken, refreshToken, user: userData } 
     };
   }
 
-  // Método para registrar un nuevo usuario
   async register({
     username, 
     email, 
@@ -46,14 +53,12 @@ export class AuthService {
     password: string; 
     phone: string; 
   }) {
-    // Verifica si el email ya está registrado
     const existingUser = await this.prisma.users.findUnique({ where: { email } });
 
     if (existingUser) {
       throw new ConflictException('Email is already in use');
     }
 
-    // Busca el ID del rol predeterminado (USER)
     const userRole = await this.prisma.role.findFirst({
       where: { name: 'USER' },
     });
@@ -62,10 +67,8 @@ export class AuthService {
       throw new Error('Default role USER not found in the database.');
     }
 
-    // Hashea la contraseña antes de guardarla
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Crea el usuario en la base de datos
     const user = await this.prisma.users.create({
       data: { 
         username, 
@@ -76,13 +79,38 @@ export class AuthService {
       },
     });
 
-    // Excluye la contraseña del usuario en la respuesta
     const { password: _, ...userData } = user;
-
-    // Devuelve los datos del usuario
     return { 
       status: 'success', 
       data: userData 
     };
+  }
+
+  async refresh(refreshToken: string) {
+    try {
+      const secret = process.env.REFRESH_TOKEN_SECRET;
+      if (!secret) {
+        throw new Error('REFRESH_TOKEN_SECRET is not defined in environment variables');
+      }
+
+      const decoded = this.jwtService.verify(refreshToken, { secret });
+
+      if (!decoded.sub) {
+        throw new UnauthorizedException('Invalid token payload');
+      }
+
+      const user = await this.prisma.users.findUnique({
+        where: { id: decoded.sub },
+      });
+
+      if (!user) {
+        throw new UnauthorizedException('User not found');
+      }
+
+      const newAccessToken = this.generateAccessToken(user);
+      return { accessToken: newAccessToken };
+    } catch (error) {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
   }
 }
