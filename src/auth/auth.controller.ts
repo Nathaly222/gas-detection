@@ -17,6 +17,11 @@ export class AuthController {
   ) {
     return this.authService.register({ username, email, password, phone });
   }
+
+  @Post('refresh')
+  async refresh(@Body() { refreshToken }: { refreshToken: string }) {
+    return this.authService.refresh(refreshToken);
+  }
 }
 
 
