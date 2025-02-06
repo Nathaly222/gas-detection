@@ -11,9 +11,14 @@ export class AuthService {
   ) {}
 
   private generateAccessToken(user: any): string {
-    const payload = { sub: user.id, email: user.email };
+    const payload = { 
+      sub: user.id, 
+      email: user.email, 
+      role: user.role ? user.role.name : 'USER',  
+    };
     return this.jwtService.sign(payload, { expiresIn: '15m' });
   }
+  
 
   private generateRefreshToken(user: any): string {
     const secret = process.env.REFRESH_TOKEN_SECRET;
@@ -26,21 +31,29 @@ export class AuthService {
   }
 
   async login(email: string, password: string) {
-    const user = await this.prisma.users.findUnique({ where: { email } });
-
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      include: { role: true }, 
+    });
+  
     if (!user || !(await bcrypt.compare(password, user.password))) {
       throw new UnauthorizedException('Invalid email or password');
     }
-
+  
     const accessToken = this.generateAccessToken(user);
     const refreshToken = this.generateRefreshToken(user);
-
+  
     const { password: _, ...userData } = user;
+    userData.role = user.role; 
+  
     return { 
       status: 'success', 
       data: { accessToken, refreshToken, user: userData } 
     };
   }
+  
+  
+  
 
   async register({
     username, 
@@ -53,7 +66,7 @@ export class AuthService {
     password: string; 
     phone: string; 
   }) {
-    const existingUser = await this.prisma.users.findUnique({ where: { email } });
+    const existingUser = await this.prisma.user.findUnique({ where: { email } });
 
     if (existingUser) {
       throw new ConflictException('Email is already in use');
@@ -69,7 +82,7 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await this.prisma.users.create({
+    const user = await this.prisma.user.create({
       data: { 
         username, 
         email, 
@@ -99,7 +112,7 @@ export class AuthService {
         throw new UnauthorizedException('Invalid token payload');
       }
 
-      const user = await this.prisma.users.findUnique({
+      const user = await this.prisma.user.findUnique({
         where: { id: decoded.sub },
       });
 

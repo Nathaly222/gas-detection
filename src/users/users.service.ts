@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -9,83 +9,81 @@ import { RoleType } from '@prisma/client';
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  // Crear un usuario con un rol predeterminado (USER)
   async create(createUserDto: CreateUserDto) {
     const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
-   
+
     try {
-      // Primero, busca o crea el rol USER
-      const userRole = await this.prisma.role.findFirst({
-        where: { name: RoleType.USER }
-      }) || await this.prisma.role.create({
-        data: { name: RoleType.USER }
+      const existingUser = await this.prisma.user.findUnique({
+        where: { email: createUserDto.email },
       });
 
-      // Luego, crea el usuario y conecta con el rol
-      const user = await this.prisma.users.create({
+      if (existingUser) {
+        throw new ConflictException('El correo ya está en uso');
+      }
+      const userRole = await this.prisma.role.findUnique({
+        where: { name: RoleType.USER }, 
+      });
+
+      if (!userRole) {
+        throw new BadRequestException('No se encontró el rol USER en la base de datos');
+      }
+
+      const user = await this.prisma.user.create({
         data: {
           username: createUserDto.username,
           email: createUserDto.email,
           phone: createUserDto.phone,
           password: hashedPassword,
-          roleId: userRole.id, // Asigna el roleId directamente
-          roles: {
-            connect: { id: userRole.id } // Conecta con el rol existente
-          }
+          roleId: userRole.id,
         },
         include: {
-          roles: true // Incluye los roles en la respuesta
-        }
+          role: true, 
+        },
       });
-      
+
       return { status: 'success', data: user };
     } catch (error) {
-      throw new BadRequestException('Error creating user: ' + error.message);
+      throw new BadRequestException('Error creando usuario: ' + error.message);
     }
   }
 
-
-  // Validar credenciales de usuario
-  async validateUser(email: string, password: string) {
-    const user = await this.prisma.users.findUnique({ where: { email } });
-    if (user && (await bcrypt.compare(password, user.password))) {
-      return user;
-    }
-    return null;
-  }
-
-  // Obtener usuario por ID
   async getUserById(id: number) {
-    const user = await this.prisma.users.findUnique({ where: { id } });
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      include: { role: true }, 
+    });
+
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException('Usuario no encontrado');
     }
+
     return { status: 'success', data: user };
   }
 
-  // Actualizar datos del usuario
   async update(id: number, updateUserDto: UpdateUserDto) {
     if (updateUserDto.password) {
       updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10);
     }
+    
     try {
-      const user = await this.prisma.users.update({
+      const user = await this.prisma.user.update({
         where: { id },
         data: updateUserDto,
+        include: { role: true },
       });
+
       return { status: 'success', data: user };
     } catch (error) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException('Usuario no encontrado');
     }
   }
 
-  // Eliminar cuenta de usuario
   async remove(id: number) {
     try {
-      await this.prisma.users.delete({ where: { id } });
-      return { status: 'success', message: `User with ID ${id} has been deleted` };
+      await this.prisma.user.delete({ where: { id } });
+      return { status: 'success', message: `Usuario con ID ${id} ha sido eliminado` };
     } catch (error) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException('Usuario no encontrado');
     }
   }
 }

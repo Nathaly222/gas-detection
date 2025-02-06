@@ -24,8 +24,10 @@ export class EventsController {
   @Auth()
   @Get(':id')
   async findOne(@Param('id') id: string) {
-    return this.eventsService.findOne(+id);
+  console.log("llamando al evento ");
+  return this.eventsService.findOne(Number(id)); 
   }
+
 
   @Auth(ValidRoles.ADMIN)
   @Delete(':id')
@@ -34,28 +36,25 @@ export class EventsController {
     return this.eventsService.remove(+id);
   }
 
-  // Obtener el valor del gas
   @Auth()
   @Get('gas-value')
   async getGasValue() {
     return this.eventsService.getGasValue();
   }
 
-  // Ruta para obtener el estado del ventilador
   @Auth()
   @Get('fan-state')
   async getFanState() {
     return this.eventsService.getFanState();
   }
 
-    // Ruta para obtener el estado de la válvula
+
     @Auth()
     @Get('valve-state')
     async getValveState() {
       return this.eventsService.getValveState();
     }
 
-  // Ruta para abrir/cerrar la válvula de gas
   @Auth()
   @Post('valve-state')
   @HttpCode(200)
@@ -66,7 +65,7 @@ export class EventsController {
     return this.eventsService.setValveState(state);
   }
 
-  // Ruta para encender o apagar el ventilador
+
   @Auth()
   @Post('fan-state')
   @HttpCode(200)
@@ -77,7 +76,6 @@ export class EventsController {
     return this.eventsService.setFanState(state);
   }
 
-  // Ruta para obtener notificaciones de peligro de gas
   @Auth()
   @Get('notification-danger')
   async getNotificationDanger() {

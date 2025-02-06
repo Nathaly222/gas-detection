@@ -15,8 +15,6 @@ export class EventsService {
     private readonly httpService: HttpService,
   ) {}
 
-  // Crea un nuevo evento en la base de datos utilizando los datos del DTO `CreateEventDto`.
-  // Asocia el evento con un dispositivo específico mediante su ID.
   async create(createEventDto: CreateEventDto) {
     try {
       const event = await this.prisma.events.create({
@@ -36,7 +34,7 @@ export class EventsService {
     }
   }
 
-  // Recupera todos los eventos de la base de datos, incluyendo información del dispositivo asociado.
+
   async findAll() {
     try {
       const events = await this.prisma.events.findMany({
@@ -52,28 +50,28 @@ export class EventsService {
     }
   }
 
-  // Busca un evento por su ID. Si el evento no existe, lanza un error indicando que no se encontró.
+
   async findOne(id: number) {
+    console.log(id);
     const event = await this.prisma.events.findUnique({
       where: {
-        id: id  // Pasar el parámetro id directamente aquí
+        id
       },
       include: {
         device: true
       }
     });
-  
     if (!event) {
       throw new NotFoundException({
         status: 'fail',
         data: `Event with ID ${id} not found`,
       });
     }
-  
     return { status: 'success', data: event };
   }
+  
 
-  // Elimina un evento por su ID. Si no se encuentra el evento, lanza un error de "no encontrado".
+
   async remove(id: number) {
     try {
       await this.prisma.events.delete({
@@ -91,7 +89,6 @@ export class EventsService {
     }
   }
 
-  // Realiza una solicitud HTTP para obtener el valor de gas desde el backend, utilizando un token de autorización.
   async getGasValue() {
     try {
       const response = await lastValueFrom(
@@ -113,7 +110,6 @@ export class EventsService {
     }
   }
 
-  // Obtiene el estado del ventilador desde el backend mediante una solicitud HTTP.
   async getFanState() {
     try {
       const response = await lastValueFrom(
@@ -135,7 +131,6 @@ export class EventsService {
     }
   }
 
-  // Establece el estado del ventilador en el backend (encendido o apagado) mediante una solicitud HTTP.
   async setFanState(state: boolean) {
     try {
       const response = await lastValueFrom(

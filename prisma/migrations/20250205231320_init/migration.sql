@@ -5,7 +5,7 @@ CREATE TYPE "RoleType" AS ENUM ('ADMIN', 'USER');
 CREATE TYPE "EventType" AS ENUM ('FUGA_DETECTADA', 'VENTILADOR_ENCENDIDO', 'VALVULA_CERRADA', 'SISTEMA_REESTABLECIDO');
 
 -- CreateTable
-CREATE TABLE "Users" (
+CREATE TABLE "User" (
     "id" SERIAL NOT NULL,
     "username" TEXT NOT NULL,
     "email" TEXT NOT NULL,
@@ -13,7 +13,7 @@ CREATE TABLE "Users" (
     "password" TEXT NOT NULL,
     "roleId" INTEGER NOT NULL,
 
-    CONSTRAINT "Users_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -44,25 +44,14 @@ CREATE TABLE "Events" (
     CONSTRAINT "Events_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "_UserRoles" (
-    "A" INTEGER NOT NULL,
-    "B" INTEGER NOT NULL,
-
-    CONSTRAINT "_UserRoles_AB_pkey" PRIMARY KEY ("A","B")
-);
+-- CreateIndex
+CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Users_email_key" ON "Users"("email");
+CREATE UNIQUE INDEX "Role_name_key" ON "Role"("name");
 
--- CreateIndex
-CREATE INDEX "_UserRoles_B_index" ON "_UserRoles"("B");
+-- AddForeignKey
+ALTER TABLE "User" ADD CONSTRAINT "User_roleId_fkey" FOREIGN KEY ("roleId") REFERENCES "Role"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Events" ADD CONSTRAINT "Events_device_id_fkey" FOREIGN KEY ("device_id") REFERENCES "Device"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "_UserRoles" ADD CONSTRAINT "_UserRoles_A_fkey" FOREIGN KEY ("A") REFERENCES "Role"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "_UserRoles" ADD CONSTRAINT "_UserRoles_B_fkey" FOREIGN KEY ("B") REFERENCES "Users"("id") ON DELETE CASCADE ON UPDATE CASCADE;

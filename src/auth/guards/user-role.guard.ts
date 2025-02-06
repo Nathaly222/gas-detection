@@ -10,19 +10,21 @@ export class UserRoleGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const validRoles: ValidRoles[] = this.reflector.get<ValidRoles[]>(META_ROLES, context.getHandler());
     if (!validRoles || validRoles.length === 0) return true;
-
+  
     const request = context.switchToHttp().getRequest();
     const user = request.user;
-
-    if (!user || !user.roles) {
+  
+    console.log('User:', user);  
+    
+    if (!user || !user.role) {
       throw new ForbiddenException('User does not have roles assigned');
     }
-
-    const hasRole = validRoles.some(role => user.roles.includes(role));
+  
+    const hasRole = validRoles.includes(user.role);  
     if (!hasRole) {
       throw new ForbiddenException(`User requires one of the following roles: ${validRoles.join(', ')}`);
     }
-
+  
     return true;
   }
 }

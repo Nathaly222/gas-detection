@@ -16,20 +16,20 @@ datasource db {
 }
         
 
-model Users {
-  id        Int      @id @default(autoincrement())
+model User {
+  id        Int    @id @default(autoincrement())
   username  String
-  email     String   @unique
+  email     String @unique
   phone     String
   password  String
   roleId    Int
-  roles     Role[]   @relation("UserRoles")
+  role      Role   @relation(fields: [roleId], references: [id]) 
 }
 
 model Role {
-  id    Int        @id @default(autoincrement())
-  name  RoleType   @default(USER) 
-  users Users[]    @relation("UserRoles")
+  id    Int      @id @default(autoincrement())
+  name  RoleType @default(USER)  @unique
+  users User[]   
 }
 
 enum RoleType {
