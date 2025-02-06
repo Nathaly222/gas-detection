@@ -20,7 +20,7 @@ export class UserRoleGuard implements CanActivate {
       throw new ForbiddenException('User does not have roles assigned');
     }
   
-    const hasRole = validRoles.includes(user.role);  
+    const hasRole = validRoles.map(role => role.toUpperCase()).includes(user.role.toUpperCase());
     if (!hasRole) {
       throw new ForbiddenException(`User requires one of the following roles: ${validRoles.join(', ')}`);
     }

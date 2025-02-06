@@ -43,6 +43,9 @@ export class AuthService {
     const accessToken = this.generateAccessToken(user);
     const refreshToken = this.generateRefreshToken(user);
   
+    const decoded = this.jwtService.decode(accessToken);
+    console.log('Decoded Token:', decoded);
+
     const { password: _, ...userData } = user;
     userData.role = user.role; 
   
