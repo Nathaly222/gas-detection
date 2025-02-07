@@ -20,8 +20,9 @@ export class UsersService {
       if (existingUser) {
         throw new ConflictException('El correo ya está en uso');
       }
+
       const userRole = await this.prisma.role.findUnique({
-        where: { name: RoleType.USER }, 
+        where: { name: RoleType.USER },
       });
 
       if (!userRole) {
@@ -37,7 +38,7 @@ export class UsersService {
           roleId: userRole.id,
         },
         include: {
-          role: true, 
+          role: true,
         },
       });
 
@@ -48,9 +49,13 @@ export class UsersService {
   }
 
   async getUserById(id: number) {
+    if (!id || isNaN(id)) {
+      throw new BadRequestException('ID de usuario inválido');
+    }
+
     const user = await this.prisma.user.findUnique({
-      where: { id },
-      include: { role: true }, 
+      where: { id: Number(id) },
+      include: { role: true },
     });
 
     if (!user) {
@@ -61,13 +66,17 @@ export class UsersService {
   }
 
   async update(id: number, updateUserDto: UpdateUserDto) {
+    if (!id || isNaN(id)) {
+      throw new BadRequestException('ID de usuario inválido');
+    }
+
     if (updateUserDto.password) {
       updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10);
     }
-    
+
     try {
       const user = await this.prisma.user.update({
-        where: { id },
+        where: { id: Number(id) },
         data: updateUserDto,
         include: { role: true },
       });
@@ -79,8 +88,12 @@ export class UsersService {
   }
 
   async remove(id: number) {
+    if (!id || isNaN(id)) {
+      throw new BadRequestException('ID de usuario inválido');
+    }
+
     try {
-      await this.prisma.user.delete({ where: { id } });
+      await this.prisma.user.delete({ where: { id: Number(id) } });
       return { status: 'success', message: `Usuario con ID ${id} ha sido eliminado` };
     } catch (error) {
       throw new NotFoundException('Usuario no encontrado');

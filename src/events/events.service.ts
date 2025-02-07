@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { CreateEventDto } from './dto/create-event.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { HttpService } from '@nestjs/axios';
@@ -52,25 +52,27 @@ export class EventsService {
 
 
   async findOne(id: number) {
-    console.log(id);
+    // Verificación de si el id es válido
+    if (!id || isNaN(id)) {
+      throw new BadRequestException('ID no válido');
+    }
+  
+    console.log('Buscando evento con ID:', id);
+  
     const event = await this.prisma.events.findUnique({
-      where: {
-        id
-      },
-      include: {
-        device: true
-      }
+      where: { id },  // Busca un evento con el ID proporcionado
+      include: { device: true },  // Incluye la relación con el dispositivo
     });
+  
     if (!event) {
       throw new NotFoundException({
         status: 'fail',
-        data: `Event with ID ${id} not found`,
+        data: `Evento con ID ${id} no encontrado`,
       });
     }
+  
     return { status: 'success', data: event };
   }
-  
-
 
   async remove(id: number) {
     try {
@@ -97,8 +99,10 @@ export class EventsService {
           { headers: this.authorizationHeader },
         ),
       );
+      console.log('Gas value response:', response.data); // Verifica la respuesta aquí
       return { status: 'success', data: response.data };
     } catch (error) {
+      console.error('Error al obtener el valor del gas:', error.response?.data || error.message);  // Log para ver más detalles
       throw new HttpException(
         {
           status: 'error',
@@ -109,6 +113,7 @@ export class EventsService {
       );
     }
   }
+  
 
   async getFanState() {
     try {
@@ -118,6 +123,7 @@ export class EventsService {
           { headers: this.authorizationHeader },
         ),
       );
+      console.log('Respuesta de la API GasValue:', response.data);
       return { status: 'success', data: response.data };
     } catch (error) {
       throw new HttpException(

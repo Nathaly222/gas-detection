@@ -65,7 +65,6 @@ export class EventsController {
     return this.eventsService.setValveState(state);
   }
 
-
   @Auth()
   @Post('fan-state')
   @HttpCode(200)
