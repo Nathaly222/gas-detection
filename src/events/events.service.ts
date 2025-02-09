@@ -6,10 +6,14 @@ import { lastValueFrom } from 'rxjs';
 
 @Injectable()
 export class EventsService {
-  private readonly authorizationHeader = {
-    Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3Mzc5MzM3NDIsImlhdCI6MTczNzkyNjU0Miwicm9sZSI6InVzZXIiLCJ1c3IiOiJGZXJuYW5kb0VuIn0.o9SUeUTQIJjKaKBwSmImOR3dTcIZtc_ChSQCwIEEljY`,
+  private readonly headers = {
+    esp32: {
+      Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkZXYiOiJlc3AzMiIsImlhdCI6MTczNzkzNDI3MSwianRpIjoiNjc5NmM1YmZlNjUwZDA2MWM1MDcxNDA5Iiwic3ZyIjoidXMtZWFzdC5hd3MudGhpbmdlci5pbyIsInVzciI6IkZlcm5hbmRvRW4ifQ.K88mwoMVfTwK1Q8LfL9Ujix6pt7CxolrFCNhpVF10ng`,
+    },
+    esp32motor: {
+      Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkZXYiOiJlc3AzMl9tb3RvciIsImlhdCI6MTczNzkzNDMyMCwianRpIjoiNjc5NmM1ZjBlNjUwZDA2MWM1MDcxNDBhIiwic3ZyIjoidXMtZWFzdC5hd3MudGhpbmdlci5pbyIsInVzciI6IkZlcm5hbmRvRW4ifQ.6Nuoibl9nz9TzEt1r9Ox3BGdFmWVDLAtPTZctWnIkfE`,
+    },
   };
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly httpService: HttpService,
@@ -93,34 +97,36 @@ export class EventsService {
 
   async getGasValue() {
     try {
+      console.log('Enviando solicitud a Thinger.io para GasValue...');
+  
       const response = await lastValueFrom(
         this.httpService.get(
           'https://backend.thinger.io/v3/users/FernandoEn/devices/esp32/resources/GasValue',
-          { headers: this.authorizationHeader },
+          { headers: this.headers.esp32 } // ✅ Usa el token correcto
         ),
       );
-      console.log('Gas value response:', response.data); // Verifica la respuesta aquí
+  
+      console.log('Gas value response:', response.data);
       return { status: 'success', data: response.data };
     } catch (error) {
-      console.error('Error al obtener el valor del gas:', error.response?.data || error.message);  // Log para ver más detalles
+      console.error('Error al obtener el valor del gas:', error.response?.data || error.message);
       throw new HttpException(
         {
           status: 'error',
           message: 'Failed to fetch gas value',
-          details: error.message,
+          details: error.response?.data || error.message,
         },
         HttpStatus.BAD_REQUEST,
       );
     }
   }
   
-
   async getFanState() {
     try {
       const response = await lastValueFrom(
         this.httpService.get(
-          'https://backend.thinger.io/v3/users/FernandoEn/devices/esp32/resources/FanStateView',
-          { headers: this.authorizationHeader },
+          'https://backend.thinger.io/v3/users/FernandoEn/devices/esp32/resources/FanState',
+          { headers: this.headers.esp32 },
         ),
       );
       console.log('Respuesta de la API GasValue:', response.data);
@@ -143,7 +149,7 @@ export class EventsService {
         this.httpService.post(
           'https://backend.thinger.io/v3/users/FernandoEn/devices/esp32/resources/FanState',
           state,
-          { headers: this.authorizationHeader },
+          { headers: this.headers.esp32 },
         ),
       );
       return { status: 'success', data: response.data };
@@ -162,19 +168,24 @@ export class EventsService {
   // Realiza una solicitud HTTP para obtener el estado de la válvula del motor.
   async getValveState() {
     try {
+      console.log('Enviando solicitud a Thinger.io para MotorStateView...');
+  
       const response = await lastValueFrom(
         this.httpService.get(
           'https://backend.thinger.io/v3/users/FernandoEn/devices/esp32_motor/resources/MotorStateView',
-          { headers: this.authorizationHeader },
+          { headers: this.headers.esp32motor } 
         ),
       );
+  
+      console.log('Valve state response:', response.data);
       return { status: 'success', data: response.data };
     } catch (error) {
+      console.error('Error al obtener el estado de la válvula:', error.response?.data || error.message);
       throw new HttpException(
         {
           status: 'error',
           message: 'Failed to fetch valve state',
-          details: error.message,
+          details: error.response?.data || error.message,
         },
         HttpStatus.BAD_REQUEST,
       );
@@ -186,9 +197,9 @@ export class EventsService {
     try {
       const response = await lastValueFrom(
         this.httpService.post(
-          'https://backend.thinger.io/v3/users/FernandoEn/devices/esp32_motor/resources/MotorState',
+          'https://backend.thinger.io/v3/users/FernandoEn/devices/esp32_motor/resources/MotorStateManual',
           state,
-          { headers: this.authorizationHeader },
+          { headers: this.headers.esp32motor },
         ),
       );
       return { status: 'success', data: response.data };
@@ -210,7 +221,7 @@ export class EventsService {
       const response = await lastValueFrom(
         this.httpService.get(
           'https://backend.thinger.io/v3/users/FernandoEn/devices/esp32/resources/NotificationDanger',
-          { headers: this.authorizationHeader },
+          { headers: this.headers.esp32 },
         ),
       );
       return { status: 'success', data: response.data };

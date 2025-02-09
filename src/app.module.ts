@@ -7,9 +7,10 @@ import { EventsModule } from './events/events.module';
 import { AuthModule } from './auth/auth.module';
 import { DeviceModule } from './device/device.module';
 import { RoleModule } from './role/role.module';
+import { HttpModule } from '@nestjs/axios';
 
 @Module({
-  imports: [PrismaModule, UsersModule, EventsModule, AuthModule, DeviceModule, RoleModule],
+  imports: [PrismaModule, UsersModule, EventsModule, AuthModule, DeviceModule, RoleModule, HttpModule],
   controllers: [AppController],
   providers: [AppService],
 })

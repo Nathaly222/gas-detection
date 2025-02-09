@@ -15,13 +15,13 @@ export class EventsController {
     return this.eventsService.create(createEventDto);
   }
 
-  @Auth()
+  //@Auth()
   @Get()
   async findAll() {
     return this.eventsService.findAll();
   }
 
-  @Auth()
+  //@Auth()
   @Get(':id')
   async findOne(@Param('id') id: string) {
   console.log("llamando al evento ");
@@ -29,33 +29,33 @@ export class EventsController {
   }
 
 
-  @Auth(ValidRoles.ADMIN)
+  //@Auth(ValidRoles.ADMIN)
   @Delete(':id')
   @HttpCode(204)
   async remove(@Param('id') id: string) {
     return this.eventsService.remove(+id);
   }
 
-  @Auth()
+  //@Auth()
   @Get('gas-value')
   async getGasValue() {
     return this.eventsService.getGasValue();
   }
 
-  @Auth()
+  //@Auth()
   @Get('fan-state')
   async getFanState() {
     return this.eventsService.getFanState();
   }
 
 
-    @Auth()
+    //@Auth()
     @Get('valve-state')
     async getValveState() {
       return this.eventsService.getValveState();
     }
 
-  @Auth()
+  //@Auth()
   @Post('valve-state')
   @HttpCode(200)
   async setValveState(@Body('state') state: boolean) {
@@ -65,7 +65,7 @@ export class EventsController {
     return this.eventsService.setValveState(state);
   }
 
-  @Auth()
+  //@Auth()
   @Post('fan-state')
   @HttpCode(200)
   async setFanState(@Body('state') state: boolean) {
@@ -75,7 +75,7 @@ export class EventsController {
     return this.eventsService.setFanState(state);
   }
 
-  @Auth()
+  //@Auth()
   @Get('notification-danger')
   async getNotificationDanger() {
     return this.eventsService.getNotificationDanger();
