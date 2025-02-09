@@ -22,11 +22,7 @@ export class EventsController {
   }
 
   //@Auth()
-  @Get(':id')
-  async findOne(@Param('id') id: string) {
-  console.log("llamando al evento ");
-  return this.eventsService.findOne(Number(id)); 
-  }
+
 
 
   //@Auth(ValidRoles.ADMIN)

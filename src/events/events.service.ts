@@ -3,6 +3,7 @@ import { CreateEventDto } from './dto/create-event.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { HttpService } from '@nestjs/axios';
 import { lastValueFrom } from 'rxjs';
+import { EventType } from '@prisma/client';
 
 @Injectable()
 export class EventsService {
@@ -14,6 +15,7 @@ export class EventsService {
       Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkZXYiOiJlc3AzMl9tb3RvciIsImlhdCI6MTczNzkzNDMyMCwianRpIjoiNjc5NmM1ZjBlNjUwZDA2MWM1MDcxNDBhIiwic3ZyIjoidXMtZWFzdC5hd3MudGhpbmdlci5pbyIsInVzciI6IkZlcm5hbmRvRW4ifQ.6Nuoibl9nz9TzEt1r9Ox3BGdFmWVDLAtPTZctWnIkfE`,
     },
   };
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly httpService: HttpService,
@@ -38,78 +40,32 @@ export class EventsService {
     }
   }
 
-
-  async findAll() {
-    try {
-      const events = await this.prisma.events.findMany({
-        include: { device: true },
-      });
-      return { status: 'success', data: events };
-    } catch (error) {
-      throw new NotFoundException({
-        status: 'error',
-        message: 'Failed to fetch events',
-        details: error.message,
-      });
-    }
-  }
-
-
-  async findOne(id: number) {
-    // Verificación de si el id es válido
-    if (!id || isNaN(id)) {
-      throw new BadRequestException('ID no válido');
-    }
-  
-    console.log('Buscando evento con ID:', id);
-  
-    const event = await this.prisma.events.findUnique({
-      where: { id },  // Busca un evento con el ID proporcionado
-      include: { device: true },  // Incluye la relación con el dispositivo
-    });
-  
-    if (!event) {
-      throw new NotFoundException({
-        status: 'fail',
-        data: `Evento con ID ${id} no encontrado`,
-      });
-    }
-  
-    return { status: 'success', data: event };
-  }
-
-  async remove(id: number) {
-    try {
-      await this.prisma.events.delete({
-        where: { id },
-      });
-      return {
-        status: 'success',
-        data: `Event with ID ${id} has been deleted`,
-      };
-    } catch (error) {
-      throw new NotFoundException({
-        status: 'fail',
-        data: `Event with ID ${id} not found`,
-      });
-    }
-  }
-
   async getGasValue() {
     try {
-      console.log('Enviando solicitud a Thinger.io para GasValue...');
-  
       const response = await lastValueFrom(
         this.httpService.get(
           'https://backend.thinger.io/v3/users/FernandoEn/devices/esp32/resources/GasValue',
-          { headers: this.headers.esp32 } // ✅ Usa el token correcto
+          { headers: this.headers.esp32 },
         ),
       );
-  
-      console.log('Gas value response:', response.data);
-      return { status: 'success', data: response.data };
+      
+      // Si el valor del gas supera el umbral, creamos un evento de fuga detectada
+      if (response.data > 30) {
+        await this.create({
+          eventType: EventType.FUGA_DETECTADA,
+          gasConcentration: response.data,
+          device_id: 1 // Asegúrate de usar el ID correcto del dispositivo
+        });
+      }
+      
+      return { 
+        status: 'success', 
+        data: {
+          value: response.data,
+          threshold: 30,
+        }
+      };
     } catch (error) {
-      console.error('Error al obtener el valor del gas:', error.response?.data || error.message);
       throw new HttpException(
         {
           status: 'error',
@@ -120,16 +76,15 @@ export class EventsService {
       );
     }
   }
-  
+
   async getFanState() {
     try {
       const response = await lastValueFrom(
         this.httpService.get(
-          'https://backend.thinger.io/v3/users/FernandoEn/devices/esp32/resources/FanState',
+          'https://backend.thinger.io/v3/users/FernandoEn/devices/esp32/resources/FanStateView',
           { headers: this.headers.esp32 },
         ),
       );
-      console.log('Respuesta de la API GasValue:', response.data);
       return { status: 'success', data: response.data };
     } catch (error) {
       throw new HttpException(
@@ -152,6 +107,16 @@ export class EventsService {
           { headers: this.headers.esp32 },
         ),
       );
+
+      // Si el ventilador se enciende, creamos un evento
+      if (state) {
+        await this.create({
+          eventType: EventType.VENTILADOR_ENCENDIDO,
+          gasConcentration: 0, // Aquí podrías obtener el valor actual del gas
+          device_id: 1 // Asegúrate de usar el ID correcto del dispositivo
+        });
+      }
+
       return { status: 'success', data: response.data };
     } catch (error) {
       throw new HttpException(
@@ -165,34 +130,27 @@ export class EventsService {
     }
   }
 
-  // Realiza una solicitud HTTP para obtener el estado de la válvula del motor.
   async getValveState() {
     try {
-      console.log('Enviando solicitud a Thinger.io para MotorStateView...');
-  
       const response = await lastValueFrom(
         this.httpService.get(
           'https://backend.thinger.io/v3/users/FernandoEn/devices/esp32_motor/resources/MotorStateView',
-          { headers: this.headers.esp32motor } 
+          { headers: this.headers.esp32motor }
         ),
       );
-  
-      console.log('Valve state response:', response.data);
       return { status: 'success', data: response.data };
     } catch (error) {
-      console.error('Error al obtener el estado de la válvula:', error.response?.data || error.message);
       throw new HttpException(
         {
           status: 'error',
           message: 'Failed to fetch valve state',
-          details: error.response?.data || error.message,
+          details: error.message,
         },
         HttpStatus.BAD_REQUEST,
       );
     }
   }
 
-  // Establece el estado de la válvula del motor (encendido o apagado) mediante una solicitud HTTP.
   async setValveState(state: boolean) {
     try {
       const response = await lastValueFrom(
@@ -202,6 +160,16 @@ export class EventsService {
           { headers: this.headers.esp32motor },
         ),
       );
+
+      // Si la válvula se cierra, creamos un evento
+      if (!state) {
+        await this.create({
+          eventType: EventType.VALVULA_CERRADA,
+          gasConcentration: 0, // Aquí podrías obtener el valor actual del gas
+          device_id: 1 // Asegúrate de usar el ID correcto del dispositivo
+        });
+      }
+
       return { status: 'success', data: response.data };
     } catch (error) {
       throw new HttpException(
@@ -215,7 +183,6 @@ export class EventsService {
     }
   }
 
-  // Realiza una solicitud HTTP para obtener las notificaciones de peligro (como una posible fuga de gas).
   async getNotificationDanger() {
     try {
       const response = await lastValueFrom(
@@ -234,6 +201,59 @@ export class EventsService {
         },
         HttpStatus.BAD_REQUEST,
       );
+    }
+  }
+
+  // Métodos de base de datos existentes
+  async findAll() {
+    try {
+      const events = await this.prisma.events.findMany({
+        include: { device: true },
+      });
+      return { status: 'success', data: events };
+    } catch (error) {
+      throw new NotFoundException({
+        status: 'error',
+        message: 'Failed to fetch events',
+        details: error.message,
+      });
+    }
+  }
+
+  async findOne(id: number) {
+    if (!id || isNaN(id)) {
+      throw new BadRequestException('Invalid ID');
+    }
+    
+    const event = await this.prisma.events.findUnique({
+      where: { id },
+      include: { device: true },
+    });
+    
+    if (!event) {
+      throw new NotFoundException({
+        status: 'fail',
+        data: `Event with ID ${id} not found`,
+      });
+    }
+    
+    return { status: 'success', data: event };
+  }
+
+  async remove(id: number) {
+    try {
+      await this.prisma.events.delete({
+        where: { id },
+      });
+      return {
+        status: 'success',
+        data: `Event with ID ${id} has been deleted`,
+      };
+    } catch (error) {
+      throw new NotFoundException({
+        status: 'fail',
+        data: `Event with ID ${id} not found`,
+      });
     }
   }
 }
