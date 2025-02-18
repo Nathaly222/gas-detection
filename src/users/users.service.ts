@@ -49,41 +49,58 @@ export class UsersService {
   }
 
   async getUserById(id: number) {
-    if (!id || isNaN(id)) {
-      throw new BadRequestException('ID de usuario inválido');
+    try {
+      if (!id || isNaN(id)) {
+        throw new BadRequestException('ID de usuario inválido');
+      }
+      const user = await this.prisma.user.findUnique({
+        where: { id: Number(id) },
+        include: { role: true },
+      });
+
+      if (!user) {
+        throw new NotFoundException('Usuario no encontrado');
+      }
+      const { password, ...result } = user;
+      
+      return { 
+        status: 'success', 
+        data: result 
+      };
+    } catch (error) {
+      throw new BadRequestException('Error al obtener el perfil: ' + error.message);
     }
-
-    const user = await this.prisma.user.findUnique({
-      where: { id: Number(id) },
-      include: { role: true },
-    });
-
-    if (!user) {
-      throw new NotFoundException('Usuario no encontrado');
-    }
-
-    return { status: 'success', data: user };
   }
 
   async update(id: number, updateUserDto: UpdateUserDto) {
-    if (!id || isNaN(id)) {
-      throw new BadRequestException('ID de usuario inválido');
-    }
-
-    if (updateUserDto.password) {
-      updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10);
-    }
-
     try {
+      if (!id || isNaN(id)) {
+        throw new BadRequestException('ID de usuario inválido');
+      }
+      const existingUser = await this.prisma.user.findUnique({
+        where: { id: Number(id) },
+      });
+      if (!existingUser) {
+        throw new NotFoundException('Usuario no encontrado');
+      }
+      if (updateUserDto.password) {
+        updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10);
+      }
       const user = await this.prisma.user.update({
         where: { id: Number(id) },
         data: updateUserDto,
         include: { role: true },
       });
-
-      return { status: 'success', data: user };
+      return { 
+        status: 'success', 
+        message: 'Usuario actualizado correctamente',
+        data: user 
+      };
     } catch (error) {
-      throw new NotFoundException('Usuario no encontrado');
+      if (error.code === 'P2025') {
+        throw new NotFoundException('Usuario no encontrado');
+      }
+      throw new BadRequestException('Error al actualizar el usuario: ' + error.message);
     }
   }
 

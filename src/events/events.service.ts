@@ -45,24 +45,21 @@ export class EventsService {
       const response = await lastValueFrom(
         this.httpService.get(
           'https://backend.thinger.io/v3/users/FernandoEn/devices/esp32/resources/GasValue',
-          { headers: this.headers.esp32 },
+          { headers: this.headers.esp32 }, 
         ),
       );
-      
-      // Si el valor del gas supera el umbral, creamos un evento de fuga detectada
       if (response.data > 30) {
         await this.create({
           eventType: EventType.FUGA_DETECTADA,
           gasConcentration: response.data,
-          device_id: 1 // Asegúrate de usar el ID correcto del dispositivo
+          device_id: 1,
         });
       }
-      
       return { 
         status: 'success', 
         data: {
-          value: response.data,
-          threshold: 30,
+          gas_concentration: response.data, 
+          threshold: 30, 
         }
       };
     } catch (error) {
@@ -85,7 +82,12 @@ export class EventsService {
           { headers: this.headers.esp32 },
         ),
       );
-      return { status: 'success', data: response.data };
+      return { 
+        status: 'success', 
+        data: {
+          fan_state: response.data,  // Devolvemos el estado del ventilador
+        }
+      };
     } catch (error) {
       throw new HttpException(
         {
@@ -97,6 +99,7 @@ export class EventsService {
       );
     }
   }
+  
 
   async setFanState(state: boolean) {
     try {
@@ -107,17 +110,21 @@ export class EventsService {
           { headers: this.headers.esp32 },
         ),
       );
-
-      // Si el ventilador se enciende, creamos un evento
+  
       if (state) {
         await this.create({
           eventType: EventType.VENTILADOR_ENCENDIDO,
-          gasConcentration: 0, // Aquí podrías obtener el valor actual del gas
-          device_id: 1 // Asegúrate de usar el ID correcto del dispositivo
+          gasConcentration: 0, // Aquí puedes obtener el valor actual del gas
+          device_id: 1
         });
       }
-
-      return { status: 'success', data: response.data };
+  
+      return { 
+        status: 'success', 
+        data: {
+          fan_state: response.data,  // Devolvemos el estado del ventilador actualizado
+        }
+      };
     } catch (error) {
       throw new HttpException(
         {
@@ -129,21 +136,33 @@ export class EventsService {
       );
     }
   }
+  
 
   async getValveState() {
     try {
+      console.log('Obteniendo estado de la válvula...');
       const response = await lastValueFrom(
         this.httpService.get(
           'https://backend.thinger.io/v3/users/FernandoEn/devices/esp32_motor/resources/MotorStateView',
           { headers: this.headers.esp32motor }
         ),
       );
-      return { status: 'success', data: response.data };
+      
+      console.log('Respuesta de Thinger:', response.data);
+
+      return {
+        status: 'success',
+        data: {
+          valve_state: response.data,
+          raw_state: response.data
+        }
+      };
     } catch (error) {
+      console.error('Error al obtener estado:', error);
       throw new HttpException(
         {
           status: 'error',
-          message: 'Failed to fetch valve state',
+          message: 'Error al obtener el estado de la válvula',
           details: error.message,
         },
         HttpStatus.BAD_REQUEST,
@@ -153,29 +172,63 @@ export class EventsService {
 
   async setValveState(state: boolean) {
     try {
-      const response = await lastValueFrom(
+      console.log(`Iniciando cambio de estado: ${state}`);
+      
+      // Obtenemos el estado actual
+      const currentState = await this.getValveState();
+      console.log('Estado actual antes del cambio:', currentState.data);
+
+      // Enviamos la solicitud a Thinger.io
+      console.log('Enviando solicitud a Thinger.io...');
+      await lastValueFrom(
         this.httpService.post(
           'https://backend.thinger.io/v3/users/FernandoEn/devices/esp32_motor/resources/MotorStateManual',
-          state,
+          { state: state },  // Enviamos el estado directamente
           { headers: this.headers.esp32motor },
         ),
       );
 
-      // Si la válvula se cierra, creamos un evento
-      if (!state) {
-        await this.create({
-          eventType: EventType.VALVULA_CERRADA,
-          gasConcentration: 0, // Aquí podrías obtener el valor actual del gas
-          device_id: 1 // Asegúrate de usar el ID correcto del dispositivo
-        });
+      // Esperamos a que el motor complete su movimiento
+      console.log('Esperando que el motor complete el movimiento...');
+      await new Promise(resolve => setTimeout(resolve, 10000));
+
+      // Verificamos el nuevo estado
+      console.log('Verificando nuevo estado...');
+      const newState = await this.getValveState();
+      console.log('Estado después del cambio:', newState.data);
+
+      // Verificamos si el cambio fue exitoso
+      if (newState.data.valve_state !== state) {
+        console.error('Estado no coincide con lo esperado');
+        throw new HttpException(
+          {
+            status: 'error',
+            message: 'La válvula no alcanzó el estado esperado',
+            details: `Estado actual: ${newState.data.valve_state}, Estado esperado: ${state}`,
+            debug: {
+              requested_state: state,
+              initial_state: currentState.data,
+              final_state: newState.data
+            }
+          },
+          HttpStatus.BAD_REQUEST,
+        );
       }
 
-      return { status: 'success', data: response.data };
+      return {
+        status: 'success',
+        message: `Válvula ${state ? 'cerrada' : 'abierta'} correctamente`,
+        data: newState.data
+      };
     } catch (error) {
+      console.error('Error en setValveState:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
       throw new HttpException(
         {
           status: 'error',
-          message: `Failed to set valve state to ${state}`,
+          message: 'Error al cambiar el estado de la válvula',
           details: error.message,
         },
         HttpStatus.BAD_REQUEST,
@@ -191,7 +244,12 @@ export class EventsService {
           { headers: this.headers.esp32 },
         ),
       );
-      return { status: 'success', data: response.data };
+      return { 
+        status: 'success', 
+        data: {
+          notification_danger: response.data,  // Devolvemos la notificación de peligro
+        }
+      };
     } catch (error) {
       throw new HttpException(
         {
@@ -203,6 +261,7 @@ export class EventsService {
       );
     }
   }
+  
 
   // Métodos de base de datos existentes
   async findAll() {

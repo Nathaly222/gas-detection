@@ -17,19 +17,36 @@ export class UsersController {
     private readonly authService: AuthService,
   ) {}
 
-  // Obtener el perfil del usuario autenticado
   @UseGuards(JwtAuthGuard)
   @Get('profile')
   async getProfile(@Req() req) {
-    return this.usersService.getUserById(req.user.sub);
+    console.log('Token payload:', req.user);
+    console.log('User ID:', req.user?.userId); // Cambiado a userId
+
+    try {
+      if (!req.user || !req.user.userId) {
+        throw new BadRequestException('Usuario no autenticado correctamente');
+      }
+
+      return await this.usersService.getUserById(req.user.userId); // Cambiado a userId
+    } catch (error) {
+      throw new BadRequestException(error.message);
+    }
   }
+
 
   // Actualizar el perfil del usuario autenticado
   @UseGuards(JwtAuthGuard)
   @Put('update')
   async updateProfile(@Req() req, @Body() updateData: UpdateUserDto) {
-    return this.usersService.update(req.user.sub, updateData);
+    try {
+      const result = await this.usersService.update(req.user.userId, updateData); 
+      return result;
+    } catch (error) {
+      throw error;
+    }
   }
+
 
   // Eliminar la cuenta del usuario autenticado
   @UseGuards(JwtAuthGuard)

@@ -21,11 +21,9 @@ export class EventsController {
     return this.eventsService.findAll();
   }
 
-  //@Auth()
 
 
-
-  //@Auth(ValidRoles.ADMIN)
+  @Auth(ValidRoles.ADMIN)
   @Delete(':id')
   @HttpCode(204)
   async remove(@Param('id') id: string) {
@@ -35,30 +33,64 @@ export class EventsController {
   //@Auth()
   @Get('gas-value')
   async getGasValue() {
-    return this.eventsService.getGasValue();
+    try {
+      const result = await this.eventsService.getGasValue();
+      return result;  
+    } catch (error) {
+      return {
+        status: 'error',
+        message: 'Failed to fetch gas value',
+        details: error.message,
+      };
+    }
   }
 
   //@Auth()
   @Get('fan-state')
   async getFanState() {
-    return this.eventsService.getFanState();
-  }
-
-
-    //@Auth()
-    @Get('valve-state')
-    async getValveState() {
-      return this.eventsService.getValveState();
+    try {
+      const result = await this.eventsService.getFanState();
+      return result;
+    } catch (error) {
+      return {
+        status: 'error',
+        message: 'Failed to fetch fan state',
+        details: error.message,
+      };
     }
+  }
+  //@Auth()
+  @Get('valve-state')
+  async getValveState() {
+    try {
+      const result = await this.eventsService.getValveState();
+      return result;
+    } catch (error) {
+      return {
+        status: 'error',
+        message: 'Failed to fetch valve state',
+        details: error.message,
+      };
+    }
+  }
 
   //@Auth()
   @Post('valve-state')
   @HttpCode(200)
   async setValveState(@Body('state') state: boolean) {
+    // Cambiamos la validación para que sea más clara
     if (typeof state !== 'boolean') {
-      throw new BadRequestException('Invalid state. Use "true" for open or "false" for close.');
+      throw new BadRequestException('Invalid state. Must be a boolean value.');
     }
-    return this.eventsService.setValveState(state);
+    try {
+      return await this.eventsService.setValveState(state);
+    } catch (error) {
+      return {
+        status: 'error',
+        message: 'Failed to set valve state',
+        details: error.message,
+      };
+    }
   }
 
   //@Auth()
@@ -68,12 +100,29 @@ export class EventsController {
     if (typeof state !== 'boolean') {
       throw new BadRequestException('Invalid state. Use "true" or "false".');
     }
-    return this.eventsService.setFanState(state);
+    try {
+      return await this.eventsService.setFanState(state);
+    } catch (error) {
+      return {
+        status: 'error',
+        message: 'Failed to set fan state',
+        details: error.message,
+      };
+    }
   }
 
   //@Auth()
   @Get('notification-danger')
   async getNotificationDanger() {
-    return this.eventsService.getNotificationDanger();
+    try {
+      const result = await this.eventsService.getNotificationDanger();
+      return result;
+    } catch (error) {
+      return {
+        status: 'error',
+        message: 'Failed to fetch danger notification',
+        details: error.message,
+      };
+    }
   }
 }
