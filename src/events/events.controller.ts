@@ -30,6 +30,8 @@ export class EventsController {
     return this.eventsService.remove(+id);
   }
 
+  
+
   //@Auth()
   @Get('gas-value')
   async getGasValue() {
@@ -43,6 +45,11 @@ export class EventsController {
         details: error.message,
       };
     }
+  }
+
+  @Get('gas-data')
+  async getGasData() {
+    return this.eventsService.getGasDataByDay();
   }
 
   //@Auth()
@@ -59,41 +66,8 @@ export class EventsController {
       };
     }
   }
-  //@Auth()
-  @Get('valve-state')
-  async getValveState() {
-    try {
-      const result = await this.eventsService.getValveState();
-      return result;
-    } catch (error) {
-      return {
-        status: 'error',
-        message: 'Failed to fetch valve state',
-        details: error.message,
-      };
-    }
-  }
 
-  //@Auth()
-  @Post('valve-state')
-  @HttpCode(200)
-  async setValveState(@Body('state') state: boolean) {
-    // Cambiamos la validación para que sea más clara
-    if (typeof state !== 'boolean') {
-      throw new BadRequestException('Invalid state. Must be a boolean value.');
-    }
-    try {
-      return await this.eventsService.setValveState(state);
-    } catch (error) {
-      return {
-        status: 'error',
-        message: 'Failed to set valve state',
-        details: error.message,
-      };
-    }
-  }
-
-  //@Auth()
+    //@Auth()
   @Post('fan-state')
   @HttpCode(200)
   async setFanState(@Body('state') state: boolean) {
@@ -110,6 +84,59 @@ export class EventsController {
       };
     }
   }
+
+  //@Auth()
+  @Get('valve-state')
+  async getValveState() {
+    try {
+      const result = await this.eventsService.getValveState();
+      return result;
+    } catch (error) {
+      return {
+        status: 'error',
+        message: 'Failed to fetch valve state',
+        details: error.message,
+      };
+    }
+  }
+
+  @Post('valve-state-cerrar')
+  @HttpCode(200)
+  async setValveStateCerrar(@Body('state') state: boolean) {
+    // Verificamos que el estado sea un booleano antes de enviarlo al servicio
+    if (typeof state !== 'boolean') {
+      throw new BadRequestException('Invalid state. Must be a boolean value.');
+    }
+
+    try {
+      return await this.eventsService.setValveStateCerrar(state);
+    } catch (error) {
+      return {
+        status: 'error',
+        message: 'Failed to set valve state',
+        details: error.message,
+      };
+    }
+  }
+ //@Auth()
+ @Post('valve-state-abrir')
+ @HttpCode(200)
+ async setValveStateAbrir(@Body('state') state: boolean) {
+   // Verificamos que el estado sea un booleano antes de enviarlo al servicio
+   if (typeof state !== 'boolean') {
+     throw new BadRequestException('Invalid state. Must be a boolean value.');
+   }
+
+   try {
+     return await this.eventsService.setValveStateAbrir(state);
+   } catch (error) {
+     return {
+       status: 'error',
+       message: 'Failed to set valve state',
+       details: error.message,
+     };
+   }
+ }
 
   //@Auth()
   @Get('notification-danger')

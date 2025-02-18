@@ -1,3 +1,4 @@
+import { NotificationService } from '../notification/notification.service';
 import { HttpException, HttpStatus, Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { CreateEventDto } from './dto/create-event.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -19,6 +20,7 @@ export class EventsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly httpService: HttpService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async create(createEventDto: CreateEventDto) {
@@ -30,6 +32,7 @@ export class EventsService {
           device: { connect: { id: createEventDto.device_id } },
         },
       });
+
       return { status: 'success', data: event };
     } catch (error) {
       throw new NotFoundException({
@@ -147,13 +150,13 @@ export class EventsService {
           { headers: this.headers.esp32motor }
         ),
       );
-      
+  
       console.log('Respuesta de Thinger:', response.data);
-
+  
       return {
         status: 'success',
         data: {
-          valve_state: response.data,
+          valve_state: response.data === "Válvula Abierta",  
           raw_state: response.data
         }
       };
@@ -169,92 +172,27 @@ export class EventsService {
       );
     }
   }
-
-  async setValveState(state: boolean) {
-    try {
-      console.log(`Iniciando cambio de estado: ${state}`);
-      
-      // Obtenemos el estado actual
-      const currentState = await this.getValveState();
-      console.log('Estado actual antes del cambio:', currentState.data);
-
-      // Enviamos la solicitud a Thinger.io
-      console.log('Enviando solicitud a Thinger.io...');
-      await lastValueFrom(
-        this.httpService.post(
-          'https://backend.thinger.io/v3/users/FernandoEn/devices/esp32_motor/resources/MotorStateManual',
-          { state: state },  // Enviamos el estado directamente
-          { headers: this.headers.esp32motor },
-        ),
-      );
-
-      // Esperamos a que el motor complete su movimiento
-      console.log('Esperando que el motor complete el movimiento...');
-      await new Promise(resolve => setTimeout(resolve, 10000));
-
-      // Verificamos el nuevo estado
-      console.log('Verificando nuevo estado...');
-      const newState = await this.getValveState();
-      console.log('Estado después del cambio:', newState.data);
-
-      // Verificamos si el cambio fue exitoso
-      if (newState.data.valve_state !== state) {
-        console.error('Estado no coincide con lo esperado');
-        throw new HttpException(
-          {
-            status: 'error',
-            message: 'La válvula no alcanzó el estado esperado',
-            details: `Estado actual: ${newState.data.valve_state}, Estado esperado: ${state}`,
-            debug: {
-              requested_state: state,
-              initial_state: currentState.data,
-              final_state: newState.data
-            }
-          },
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
-      return {
-        status: 'success',
-        message: `Válvula ${state ? 'cerrada' : 'abierta'} correctamente`,
-        data: newState.data
-      };
-    } catch (error) {
-      console.error('Error en setValveState:', error);
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      throw new HttpException(
-        {
-          status: 'error',
-          message: 'Error al cambiar el estado de la válvula',
-          details: error.message,
-        },
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-  }
-
+  
   async getNotificationDanger() {
     try {
-      const response = await lastValueFrom(
-        this.httpService.get(
-          'https://backend.thinger.io/v3/users/FernandoEn/devices/esp32/resources/NotificationDanger',
-          { headers: this.headers.esp32 },
-        ),
-      );
-      return { 
-        status: 'success', 
-        data: {
-          notification_danger: response.data,  // Devolvemos la notificación de peligro
-        }
+      const notifications = await this.prisma.events.findMany({
+        select: {
+          event_type: true,  
+          event_time: true,  
+          gas_concentration: true, 
+        },
+        orderBy: { event_time: 'desc' }, 
+      });
+  
+      return {
+        status: 'success',
+        data: notifications,
       };
     } catch (error) {
       throw new HttpException(
         {
           status: 'error',
-          message: 'Failed to fetch danger notification',
+          message: 'Failed to fetch notifications',
           details: error.message,
         },
         HttpStatus.BAD_REQUEST,
@@ -263,7 +201,40 @@ export class EventsService {
   }
   
 
-  // Métodos de base de datos existentes
+  async getGasDataByDay() {
+    try {
+      const gasData = await this.prisma.events.groupBy({
+        by: ['event_time'],
+        _avg: {
+          gas_concentration: true,
+        },
+        orderBy: {
+          event_time: 'asc', // Ordenar por fecha ascendente
+        },
+      });
+  
+      // Mapeo de los datos para que solo se muestren la fecha y la concentración promedio
+      const formattedData = gasData.map(item => ({
+        date: item.event_time.toISOString().split('T')[0], // Fecha sin la parte de tiempo
+        avg_concentration: item._avg.gas_concentration,
+      }));
+  
+      return {
+        status: 'success',
+        data: formattedData,
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          status: 'error',
+          message: 'Failed to fetch gas data by day',
+          details: error.message,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
   async findAll() {
     try {
       const events = await this.prisma.events.findMany({
@@ -315,4 +286,72 @@ export class EventsService {
       });
     }
   }
+
+
+  // Nuevos métodos para controlar la válvula
+
+  async setValveStateCerrar(state: boolean) {
+    try {
+      const response = await lastValueFrom(
+        this.httpService.post(
+          'https://backend.thinger.io/v3/users/FernandoEn/devices/esp32_motor/resources/MotorStateManualCerrado',
+          state,  // Enviamos el estado directamente
+          { headers: this.headers.esp32motor },
+        ),
+      );
+
+      // Si la válvula se cierra, se registra un evento
+      if (!state) {
+        await this.create({
+          eventType: EventType.VALVULA_CERRADA,
+          gasConcentration: 0, // Suponiendo que la concentración de gas sea 0 cuando la válvula está cerrada
+          device_id: 1 // Aquí puedes ajustar según el ID del dispositivo
+        });
+      }
+      
+      return { 
+        status: 'success', 
+        data: {
+          valve_state: response.data,  // Aquí devuelves el estado de la válvula
+        }
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          status: 'error',
+          message: `Failed to set valve state to ${state}`,
+          details: error.message,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  async setValveStateAbrir(state: boolean) {
+    try {
+      const response = await lastValueFrom(
+        this.httpService.post(
+          'https://backend.thinger.io/v3/users/FernandoEn/devices/esp32_motor/resources/MotorStateManualAbierto',
+          state,  
+          { headers: this.headers.esp32motor },
+        ),
+      );      
+      return { 
+        status: 'success', 
+        data: {
+          valve_state: response.data,  // Aquí devuelves el estado de la válvula
+        }
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          status: 'error',
+          message: `Failed to set valve state to ${state}`,
+          details: error.message,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
 }
+
