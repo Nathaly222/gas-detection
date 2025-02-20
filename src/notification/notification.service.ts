@@ -26,8 +26,8 @@ export class NotificationService {
 
       // Enviar mensaje solo al usuario correspondiente
       const phone = user.phone;
-      await this.twilioService.sendSms(phone, '¡Alerta! Se ha detectado una fuga de gas.');
-
+      const alertMessage = '🚨 ¡Alerta! Se ha detectado una fuga de gas en su hogar. Tome precauciones.';
+      await this.twilioService.sendWhatsapp(phone, alertMessage);
       return { status: 'success', message: `Mensaje enviado al usuario con ID ${userId}.` };
     } catch (error) {
       console.error('Error enviando notificaciones:', error);

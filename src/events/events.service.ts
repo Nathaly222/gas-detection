@@ -6,6 +6,7 @@ import { HttpService } from '@nestjs/axios';
 import { lastValueFrom } from 'rxjs';
 import { EventType } from '@prisma/client';
 
+
 @Injectable()
 export class EventsService {
   private readonly headers = {
@@ -23,16 +24,22 @@ export class EventsService {
     private readonly notificationService: NotificationService,
   ) {}
 
-  async create(createEventDto: CreateEventDto) {
+  async create(createEventDto: CreateEventDto, userId: number) {
     try {
       const event = await this.prisma.events.create({
         data: {
           event_type: createEventDto.eventType,
           gas_concentration: createEventDto.gasConcentration,
           device: { connect: { id: createEventDto.device_id } },
+          user: { connect: { id: userId } },
         },
       });
-
+  
+      // Comentar la parte que envía notificación a WhatsApp
+      // if (createEventDto.eventType === EventType.FUGA_DETECTADA) {
+      //   await this.notificationService.sendNotificationToUser(userId);
+      // }
+  
       return { status: 'success', data: event };
     } catch (error) {
       throw new NotFoundException({
@@ -42,8 +49,9 @@ export class EventsService {
       });
     }
   }
+  
 
-  async getGasValue() {
+  async getGasValue(userId: number) {
     try {
       const response = await lastValueFrom(
         this.httpService.get(
@@ -56,7 +64,7 @@ export class EventsService {
           eventType: EventType.FUGA_DETECTADA,
           gasConcentration: response.data,
           device_id: 1,
-        });
+        }, userId);
       }
       return { 
         status: 'success', 
@@ -104,7 +112,7 @@ export class EventsService {
   }
   
 
-  async setFanState(state: boolean) {
+  async setFanState(state: boolean, userId: number) {
     try {
       const response = await lastValueFrom(
         this.httpService.post(
@@ -119,7 +127,7 @@ export class EventsService {
           eventType: EventType.VENTILADOR_ENCENDIDO,
           gasConcentration: 0, // Aquí puedes obtener el valor actual del gas
           device_id: 1
-        });
+        }, userId);
       }
   
       return { 
@@ -290,7 +298,7 @@ export class EventsService {
 
   // Nuevos métodos para controlar la válvula
 
-  async setValveStateCerrar(state: boolean) {
+  async setValveStateCerrar(state: boolean, userId: number) {
     try {
       const response = await lastValueFrom(
         this.httpService.post(
@@ -306,7 +314,7 @@ export class EventsService {
           eventType: EventType.VALVULA_CERRADA,
           gasConcentration: 0, // Suponiendo que la concentración de gas sea 0 cuando la válvula está cerrada
           device_id: 1 // Aquí puedes ajustar según el ID del dispositivo
-        });
+        }, userId);
       }
       
       return { 

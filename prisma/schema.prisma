@@ -24,6 +24,7 @@ model User {
   password  String
   roleId    Int
   role      Role   @relation(fields: [roleId], references: [id]) 
+  events    Events[] 
 }
 
 model Role {
@@ -44,13 +45,17 @@ model Device {
   events      Events[]
 }
 model Events {
-  id          Int @id@default(autoincrement())
-  event_type  EventType
-  event_time  DateTime @default(now())
+  id                Int      @id @default(autoincrement())
+  event_type        EventType
+  event_time        DateTime @default(now())
   gas_concentration Decimal
-  device_id   Int 
-  device      Device @relation(fields: [device_id], references: [id])
+  device_id         Int
+  device            Device   @relation(fields: [device_id], references: [id])
+
+  userId            Int?
+  user              User?     @relation(fields: [userId], references: [id])  
 }
+
 
 
 enum EventType {

@@ -14,4 +14,8 @@ export class CreateEventDto {
     @IsNumber()
     @IsPositive()
     device_id: number;
+
+    @IsNumber()
+    @IsPositive()
+    userId?: number;
 }

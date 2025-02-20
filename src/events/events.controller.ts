@@ -3,6 +3,7 @@ import { EventsService } from './events.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { Auth } from 'src/auth/dto/decorators/auth.decorator';
 import { ValidRoles } from 'src/auth/enums/valid-roles.enum';
+import { User } from 'src/auth/dto/decorators/user.decorator';
 
 @Controller('events')
 export class EventsController {
@@ -11,8 +12,8 @@ export class EventsController {
   @Auth(ValidRoles.ADMIN)
   @Post()
   @HttpCode(201) 
-  async create(@Body() createEventDto: CreateEventDto) {
-    return this.eventsService.create(createEventDto);
+  async create(@Body() createEventDto: CreateEventDto, @User() user: any) {
+    return this.eventsService.create(createEventDto, user.userId);
   }
 
   //@Auth()
@@ -20,7 +21,6 @@ export class EventsController {
   async findAll() {
     return this.eventsService.findAll();
   }
-
 
 
   @Auth(ValidRoles.ADMIN)
@@ -32,11 +32,12 @@ export class EventsController {
 
   
 
-  //@Auth()
+  @Auth()
   @Get('gas-value')
-  async getGasValue() {
+  async getGasValue(@User() user: any) {
+    console.log('Usuario:', user);
     try {
-      const result = await this.eventsService.getGasValue();
+      const result = await this.eventsService.getGasValue(user.userId);
       return result;  
     } catch (error) {
       return {
@@ -47,12 +48,13 @@ export class EventsController {
     }
   }
 
+  @Auth()
   @Get('gas-data')
   async getGasData() {
     return this.eventsService.getGasDataByDay();
   }
 
-  //@Auth()
+  @Auth()
   @Get('fan-state')
   async getFanState() {
     try {
@@ -67,15 +69,15 @@ export class EventsController {
     }
   }
 
-    //@Auth()
+  @Auth()
   @Post('fan-state')
   @HttpCode(200)
-  async setFanState(@Body('state') state: boolean) {
+  async setFanState(@Body('state') state: boolean, @User() user: any) {
     if (typeof state !== 'boolean') {
       throw new BadRequestException('Invalid state. Use "true" or "false".');
     }
     try {
-      return await this.eventsService.setFanState(state);
+      return await this.eventsService.setFanState(state, user.userId );
     } catch (error) {
       return {
         status: 'error',
@@ -85,7 +87,7 @@ export class EventsController {
     }
   }
 
-  //@Auth()
+  @Auth()
   @Get('valve-state')
   async getValveState() {
     try {
@@ -100,16 +102,17 @@ export class EventsController {
     }
   }
 
+  @Auth()
   @Post('valve-state-cerrar')
   @HttpCode(200)
-  async setValveStateCerrar(@Body('state') state: boolean) {
+  async setValveStateCerrar(@Body('state') state: boolean, @User() user: any) {
     // Verificamos que el estado sea un booleano antes de enviarlo al servicio
     if (typeof state !== 'boolean') {
       throw new BadRequestException('Invalid state. Must be a boolean value.');
     }
 
     try {
-      return await this.eventsService.setValveStateCerrar(state);
+      return await this.eventsService.setValveStateCerrar(state, user.userId);
     } catch (error) {
       return {
         status: 'error',
@@ -118,7 +121,7 @@ export class EventsController {
       };
     }
   }
- //@Auth()
+ @Auth()
  @Post('valve-state-abrir')
  @HttpCode(200)
  async setValveStateAbrir(@Body('state') state: boolean) {
@@ -138,7 +141,7 @@ export class EventsController {
    }
  }
 
-  //@Auth()
+  @Auth()
   @Get('notification-danger')
   async getNotificationDanger() {
     try {
